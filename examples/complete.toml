@@ -1,0 +1,55 @@
+[settings]
+backup-base-dir = "/mnt/snap1"
+
+[settings.globalvars]
+BTRVOL = "snap1"
+CONF_BASE = "/home/osmium/backup"
+
+
+[repo.cloud]
+kind = "s3"
+# restic by default expects path-style bucket URL
+url = "https://s3.some-storage.localdomain//my-bucket/restic-backups/"
+region = "us-east-1"
+access-key-file = "$CONF_BASE/.s3/access.key"
+secret-key-file = "$CONF_BASE/.s3/secret.key"
+repo-key-file = "$CONF_BASE/repo-s3.password"
+
+[repo.localdir]
+kind = "local"
+path = "$CONF_BASE/local-repo"
+restic-key-file = "$CONF_BASE/repo-local.password"
+default = true
+
+
+[[hooks.before-all]]
+kind = "btrfs"
+action = "snapshot"
+subvolume = "/home"
+snapshot = "$BDIR"
+
+[[hooks.before-all]]
+kind = "command"
+command = "du -sh $CONF_BASE/local-repo"
+
+[[hooks.after-all]]
+kind = "btrfs"
+action = "delete"
+subvolume = "$BDIR"
+
+
+[profiles.documents]
+paths = ["$BDIR/Documents"]
+
+[profiles.code]
+paths = ["$BDIR/code"]
+exclude-paths = [
+    ".cache",
+    "venv",
+    ".venv",
+    ".terragrunt-cache",
+    "node_modules"
+]
+
+[profiles.flatpak-list]
+command = "flatpak list"
