@@ -2,5 +2,3 @@
 from lohup.cli import cli
 
 cli()
-
-

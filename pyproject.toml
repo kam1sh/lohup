@@ -1,13 +1,29 @@
 [project]
 name = "lohup"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backups done dummy"
 readme = "README.md"
+maintainers = [
+    {name = "Igor Ovsyannikov"}
+]
+license = "MIT"
+keywords = ["restic", "backups"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: Utilities",
+]
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.2.1",
     "humanize>=4.13.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/kam1sh/lohup"
 
 [dependency-groups]
 dev = [
