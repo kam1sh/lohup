@@ -24,7 +24,9 @@ class Restic:
                 if masked := self.repo.access_key_file:
                     env["AWS_ACCESS_KEY_ID"] = Path(masked.value).read_text().strip()
                 if masked := self.repo.secret_key_file:
-                    env["AWS_SECRET_ACCESS_KEY"] = Path(masked.value).read_text().strip()
+                    env["AWS_SECRET_ACCESS_KEY"] = (
+                        Path(masked.value).read_text().strip()
+                    )
                 env["RESTIC_REPOSITORY"] = f"s3:{self.repo.url}"
             case config.LocalRepository():
                 env["RESTIC_REPOSITORY"] = self.repo.path
@@ -33,6 +35,25 @@ class Restic:
     def run(self, args):
         cmd, env = self._prepare(args)
         procs.check_call(cmd, env=env)
+
+    def backup(self, profile: config.Profile):
+        args = ["backup", "--tag", profile.name]
+        args.extend(profile.cli_args)
+        match profile:
+            case config.PathsProfile():
+                for pth in profile.exclude_paths:
+                    args.extend(["-e", pth])
+                args.extend(profile.paths)
+                self.run(args)
+            case config.CommandProfile():
+                args.append("--stdin")
+                match profile.command:
+                    case str(x):
+                        self.pipe_stdout(args, src_cmd=x.split())
+                    case list(x):
+                        self.pipe_stdout(args, src_cmd=x)
+                    case _:
+                        raise NotImplementedError(profile.command)
 
     def pipe_stdout(self, args: list[str], src_cmd: list[str]):
         cmd = [self.binary] + args
@@ -56,3 +77,9 @@ class Restic:
         cmd.extend(args)
         env = self.environ()
         return cmd, env
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return self

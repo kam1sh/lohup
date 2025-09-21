@@ -1,24 +1,29 @@
 [settings]
 backup-base-dir = "/mnt/snap1"
+tmp-dir = "/tmp/rustic"
+# backup engine to use, "restic" (default) or "rustic"
+subsystem-name = "rustic"
 
 [settings.globalvars]
+# also built-in 
 BTRVOL = "snap1"
 CONF_BASE = "/home/osmium/backup"
 
 
 [repo.cloud]
 kind = "s3"
-# restic by default expects path-style bucket URL
-url = "https://s3.some-storage.localdomain//my-bucket/restic-backups/"
+endpoint = "https://s3.some-storage.localdomain"
 region = "us-east-1"
 access-key-file = "$CONF_BASE/.s3/access.key"
 secret-key-file = "$CONF_BASE/.s3/secret.key"
 repo-key-file = "$CONF_BASE/repo-s3.password"
+path = "/restic-backups"
+bucket = "my-bucket"
 
 [repo.localdir]
 kind = "local"
 path = "$CONF_BASE/local-repo"
-restic-key-file = "$CONF_BASE/repo-local.password"
+repo-key-file = "$CONF_BASE/repo-local.password"
 default = true
 
 

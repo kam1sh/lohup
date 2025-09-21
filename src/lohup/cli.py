@@ -28,7 +28,7 @@ def restic(obj: Lohup, repo, args: tuple[str, ...]):
     """
     Pass command to restic
     """
-    obj.invoke_restic(repo, args)
+    obj.invoke_direct(repo, args)
 
 
 @cli.command()
@@ -62,6 +62,8 @@ def snapshots(obj: Lohup, repo: str, raw_mode: bool):
         summary = snap["summary"]
         end = datetime.fromisoformat(summary["backup_end"])
         changes = summary["files_new"] + summary["files_changed"]
+        total_files = summary["total_files_processed"]
+        changes_ratio = changes / total_files if total_files else 0
         snapshots.append(
             dict(
                 id=snap["short_id"],
@@ -71,7 +73,7 @@ def snapshots(obj: Lohup, repo: str, raw_mode: bool):
                 hostname=snap["hostname"],
                 duration=end - dt,
                 changes=changes,
-                changes_ratio=changes / summary["total_files_processed"],
+                changes_ratio=changes_ratio,
                 size_comp=summary["data_added_packed"],
                 size_raw=summary["data_added"],
                 processed=summary["total_bytes_processed"],
@@ -90,7 +92,8 @@ def snapshots(obj: Lohup, repo: str, raw_mode: bool):
         click.echo(f"\tFiles changed (since previous): {snap['changes']} ({ratio})")
         size = humanize.naturalsize(snap["size_raw"], binary=True)
         compressed = humanize.naturalsize(snap["size_comp"], binary=True)
-        ratio = snap["size_raw"] / snap["processed"]
+        total_bytes = snap["processed"]
+        ratio = snap["size_raw"] / total_bytes if total_bytes else 0
         ratio = click.style(f"{ratio:.1f}%", fg="blue")
         click.echo(f"\tDiff size: {compressed}, unpacked: {size} ({ratio})")
         click.echo(f"\tHost: {snap['hostname']}")

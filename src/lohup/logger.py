@@ -6,6 +6,7 @@ import enum
 
 class LogLevel(enum.IntEnum):
     ERROR = 40
+    WARNING = 30
     INFO = 20
     VERBOSE = 15
     DEBUG = 10
@@ -22,15 +23,23 @@ class CliLogger:
                 import traceback
 
                 msg = "".join(traceback.format_exception(msg))
-            click.echo(click.style(msg, fg="red"))
+            msg = (click.style("[error]", fg="red"), msg)
+            click.echo(" ".join(msg))
+
+    def warning(self, msg):
+        if self.level <= LogLevel.WARNING:
+            msg = (click.style("[warn]", fg="orange"), msg)
+            click.echo(" ".join(msg))
 
     def info(self, msg):
         if self.level <= LogLevel.INFO:
-            click.echo(click.style(msg, fg="blue"))
+            msg = (click.style("[info]", fg="blue"), msg)
+            click.echo(" ".join(msg))
 
     def debug(self, msg):
         if self.level <= LogLevel.DEBUG:
-            click.echo(click.style(msg, fg="white"))
+            msg = (click.style("[debug]", fg="white"), msg)
+            click.echo(" ".join(msg))
 
     def accepts(self, level):
         return self.level <= level
@@ -51,6 +60,9 @@ class BasicLogger:
         else:
             self.logger.error(msg)
 
+    def warning(self, msg):
+        self.logger.warning(msg)
+
     def info(self, msg):
         self.logger.info(msg)
 
@@ -59,3 +71,6 @@ class BasicLogger:
 
     def accepts(self, level):
         return self.level <= level
+
+
+LoggerProto = CliLogger | BasicLogger

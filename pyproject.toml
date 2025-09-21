@@ -7,7 +7,7 @@ maintainers = [
     {name = "Igor Ovsyannikov"}
 ]
 license = "MIT"
-keywords = ["restic", "backups"]
+keywords = ["restic", "rustic", "backups"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -20,6 +20,7 @@ requires-python = ">=3.13"
 dependencies = [
     "click>=8.2.1",
     "humanize>=4.13.0",
+    "tomlkit>=0.13.3",
 ]
 
 [project.urls]

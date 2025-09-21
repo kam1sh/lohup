@@ -1,3 +1,4 @@
+import platform
 import tomllib
 from pathlib import Path
 from dataclasses import dataclass
@@ -15,16 +16,29 @@ class ConfigError(ValueError):
 class Settings:
     backup_base_dir: Path
     globalvars: dict[str, str]
+    build_dir: Path
+    subsystem: str
 
     @staticmethod
     def load(conf: dict):
         with catch_errors() as catch:
             basedir = conf.get("backup-base-dir")
             basepath = Path(basedir) if basedir else Path.cwd()
+            tmpdir = conf.get("tmp-dir")
+            tmp_path = Path("/tmp/lohup")
+            if not tmpdir:
+                if platform.system() == "Windows":
+                    tmp_path = Path.home().joinpath("AppData", "Local", "Temp", "lohup")
+            else:
+                tmp_path = Path(tmpdir)
             settings = Settings(
-                backup_base_dir=basepath, globalvars=conf.get("globalvars") or {}
+                backup_base_dir=basepath,
+                globalvars=conf.get("globalvars") or {},
+                build_dir=tmp_path,
+                subsystem=conf.get("subsystem-name", "restic"),
             )
             settings.globalvars["BDIR"] = str(basepath)
+            settings.globalvars["BUILDDIR"] = str(settings.build_dir)
             for key, value in settings.globalvars.items():
                 if "$" in value:
                     catch.error(
@@ -59,27 +73,33 @@ class LocalRepository:
 @dataclass
 class S3Repository:
     name: str
-    url: str
+    endpoint: str
     region: str
     access_key_file: Masked
     secret_key_file: Masked
     repo_key_file: Masked
+    bucket: str
+    path: str
     default: bool
 
     @staticmethod
     def load(name: str, conf: dict, expander: VarExpander):
         repo = S3Repository(
             name=name,
-            url=expander.expand(conf.get("url", "")),
+            endpoint=expander.expand(conf.get("endpoint", "https://s3.amazonaws.com")),
             region=conf.get("region", ""),
             access_key_file=Masked(expander.expand(conf.get("access-key-file", ""))),
             secret_key_file=Masked(expander.expand(conf.get("secret-key-file", ""))),
             repo_key_file=Masked(expander.expand(conf.get("repo-key-file", ""))),
+            bucket=expander.expand(conf.get("bucket", "")),
+            path=expander.expand(conf.get("path", "/")),
             default=conf.get("default", False),
         )
         with catch_errors() as catcher:
-            if not repo.url:
-                catcher.error("field 'url': not set")
+            if not repo.endpoint:
+                catcher.error("field 'endpoint': not set")
+            if not repo.bucket:
+                catcher.error("field 'bucket': not set")
             if value := repo.access_key_file.value:
                 if msg := ensure_exists(value, field="access-key-file"):
                     catcher.error(msg)
@@ -178,13 +198,15 @@ class PathsProfile:
     repo: str | None
     paths: list[str]
     exclude_paths: list[str]
+    cli_args: list[str]
 
 
 @dataclass
 class CommandProfile:
     name: str
     repo: str | None
-    command: str
+    command: str | list[str]
+    cli_args: list[str]
 
 
 Profile = PathsProfile | CommandProfile
@@ -205,7 +227,7 @@ class TomlConfig:
             with catch_errors(failfast=logger.accepts(LogLevel.VERBOSE)) as catcher:
                 return TomlConfig._ffile_impl(name, path, catcher)
         except CatcherError as e:
-            raise ConfigError(f"Failed to parse TOML config") from e
+            raise ConfigError("Failed to parse TOML config") from e
 
     @staticmethod
     def _ffile_impl(name: str, path: Path, catcher):
@@ -247,9 +269,10 @@ class TomlConfig:
             )
         profiles = {}
         for name, opts in conf.get("profiles", {}).items():
+            args = opts.get("cli-args", [])
             if cmd := opts.get("command"):
                 profiles[name] = CommandProfile(
-                    name, repo=opts.get("repo"), command=cmd
+                    name, repo=opts.get("repo"), command=cmd, cli_args=args
                 )
             else:
                 paths = opts.get("paths")
@@ -263,6 +286,7 @@ class TomlConfig:
                     exclude_paths=[
                         expander.expand(x) for x in opts.get("exclude-paths", [])
                     ],
+                    cli_args=args,
                 )
         toml = TomlConfig(
             settings=settings,
