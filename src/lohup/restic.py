@@ -27,7 +27,9 @@ class Restic:
                     env["AWS_SECRET_ACCESS_KEY"] = (
                         Path(masked.value).read_text().strip()
                     )
-                env["RESTIC_REPOSITORY"] = f"s3:{self.repo.url}"
+                path = self.repo.path.lstrip("/")
+                url = f"{self.repo.endpoint}/{self.repo.bucket}/{path}"
+                env["RESTIC_REPOSITORY"] = f"s3:{url}"
             case config.LocalRepository():
                 env["RESTIC_REPOSITORY"] = self.repo.path
         return env
